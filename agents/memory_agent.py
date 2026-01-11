@@ -1,4 +1,4 @@
-MEMORY = {}
+MEMORY = []
 
-def remember(topic, score):
-    MEMORY[topic] = score
+def remember(topic, stats):
+    MEMORY.append((topic, stats))
