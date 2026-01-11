@@ -1,3 +1,4 @@
+# كتابة السكريبت
 def generate_script(topic):
     return f"""
 Did you know?
