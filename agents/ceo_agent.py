@@ -1,4 +1,4 @@
-def decision(report):
-    if "Rejected" in report:
-        return "Fix content quality"
+def review(stats):
+    if stats["views"] < 500:
+        return "Improve hooks"
     return "Keep scaling"
