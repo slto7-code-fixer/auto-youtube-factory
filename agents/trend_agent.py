@@ -1,3 +1,4 @@
+# الباحث عن الترند
 def get_trend():
     trends = [
         "Amazing science facts about the human brain",
