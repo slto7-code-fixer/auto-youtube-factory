@@ -1,4 +1,9 @@
-moviepy
+moviepy>=2.2.1
 pillow
 ffmpeg-python
-requests
+numpy
+imageio
+imageio-ffmpeg
+proglog
+python-dotenv
+tqdm
