@@ -1,2 +1,3 @@
 def create_video(script):
-    print("🎬 Video created")
+    filename = "video.mp4"
+    return filename
