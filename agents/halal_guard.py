@@ -1,4 +1,7 @@
-HARAM = ["music", "dating", "alcohol", "gambling"]
+HARAM_WORDS = ["music", "sex", "dating", "gambling"]
 
-def halal_check(text):
-    return not any(word in text.lower() for word in HARAM)
+def halal_check(script):
+    for word in HARAM_WORDS:
+        if word in script.lower():
+            return False
+    return True
