@@ -1,3 +1,4 @@
+# الفلتر الشرعي
 HARAM_WORDS = ["music", "sex", "dating", "gambling"]
 
 def halal_check(script):
