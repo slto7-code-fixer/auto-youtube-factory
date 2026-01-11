@@ -1,3 +1,4 @@
+# جلب إحصائيات الفيديو
 def get_stats():
     return {
         "views": 1200,
