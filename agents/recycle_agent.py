@@ -1,3 +1,4 @@
+# تحويل Shorts → فيديو طويل
 SHORTS = []
 
 def add_short(script):
