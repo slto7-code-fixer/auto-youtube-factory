@@ -1,7 +1,7 @@
-VIDEOS = []
+SHORTS = []
 
-def add_video(script):
-    VIDEOS.append(script)
+def add_short(script):
+    SHORTS.append(script)
 
-def can_create_long():
-    return len(VIDEOS) >= 5
+def can_make_long():
+    return len(SHORTS) >= 5
