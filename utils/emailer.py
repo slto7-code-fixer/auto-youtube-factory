@@ -1,3 +1,2 @@
 def send_email(report):
-    print("📧 Report sent")
-    print(report)
+    print("Weekly report sent")
