@@ -1,3 +1,4 @@
+# هل الفكرة مربحة؟
 def profit_score(topic):
     score = 0
     keywords = ["science", "facts", "psychology", "brain", "mind"]
