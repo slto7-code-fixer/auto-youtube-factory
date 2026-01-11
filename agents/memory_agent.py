@@ -1,3 +1,4 @@
+# حفظ تجربة الفيديوهات
 MEMORY = []
 
 def remember(topic, stats):
