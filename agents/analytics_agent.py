@@ -1,5 +1,6 @@
-def collect_stats():
+def get_stats():
     return {
-        "videos": 1,
-        "status": "Good"
+        "views": 1200,
+        "ctr": 7.3,
+        "retention": 65
     }
