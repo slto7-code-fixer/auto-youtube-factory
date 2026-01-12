@@ -11,60 +11,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # خطوة 1: سحب الكود
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # خطوة 2: تثبيت Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      # خطوة 3: عرض الملفات للتأكد
+      - name: Show files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Files in agents/ ==="
+          ls -la agents/
+
+      # خطوة 4: تثبيت المتطلبات (إن وجدت)
+      - name: Install requirements
         run: |
           python -m pip install --upgrade pip
-          # تثبيت الحزمة الحالية أولاً
-          pip install -e . || echo "Could not install as package, continuing..."
-          # ثم تثبيت المتطلبات الأخرى
-          if [ -f requirements.txt ]; then
+          if [ -f "requirements.txt" ]; then
             pip install -r requirements.txt
           fi
 
-      - name: Debug - Show Python path
-        run: |
-          echo "=== Python Path ==="
-          python -c "import sys; print('\n'.join(sys.path))"
-          
-      - name: Run supervisor script
+      # خطوة 5: تشغيل supervisor مع حل مشكلة PYTHONPATH
+      - name: Run Supervisor
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          PYTHONPATH: /home/runner/work/auto-youtube-factory/auto-youtube-factory
         run: |
-          echo "=== Running supervisor script ==="
+          echo "=== Starting Supervisor ==="
           
-          # 1. إنشاء client_secret.json
+          # إنشاء ملف client_secret.json
           if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
-            echo "Creating client_secret.json..."
             echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
+            echo "✅ Created client_secret.json"
           else
-            echo "ERROR: GOOGLE_CLIENT_SECRET is not set!"
+            echo "❌ GOOGLE_CLIENT_SECRET is empty!"
             exit 1
           fi
           
-          # 2. تشغيل السكريبت مع debug
-          echo "Starting supervisor..."
-          set -x  # لعرض الأوامر أثناء التنفيذ
+          # الحل: أضف المسار الحالي إلى PYTHONPATH
+          echo "=== Setting PYTHONPATH ==="
+          export PYTHONPATH=$PWD:$PYTHONPATH
           
-          # الطريقة المضمونة: استخدام python -m من الدليل الجذر
+          # اختبر استيراد agents
+          echo "=== Testing agents import ==="
+          python -c "import sys; print('Python path:', sys.path)"
+          python -c "import agents; print('✅ Successfully imported agents')" || echo "❌ Failed to import agents"
+          
+          # تشغيل السكريبت
+          echo "=== Running supervisor ==="
           cd /home/runner/work/auto-youtube-factory/auto-youtube-factory
-          python -c "
-import sys
-print('Python version:', sys.version)
-print('Current dir:', sys.path[0])
-print('Has agents?', 'agents' in sys.modules)
-"
-          
           python -m agents.supervisor
-          
-          EXIT_CODE=$?
-          echo "Supervisor exited with code: $EXIT_CODE"
-          exit $EXIT_CODE
