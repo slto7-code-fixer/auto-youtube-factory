@@ -14,151 +14,38 @@ jobs:
       # خطوة 1: سحب الكود من الريبو
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # لجلب كل التاريخ
 
-      # خطوة 2: تثبيت Python
+      # خطوة 2: تثبيت Python الصحيح
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.10'  # نسخة متوفرة على GitHub Actions
 
-      # خطوة 3: عرض هيكل المشروع للتحقق
-      - name: Show project structure
-        run: |
-          echo "=== Project Structure ==="
-          find . -type f -name "*.py" | head -20
-          echo "=== Checking agents directory ==="
-          ls -la agents/ || echo "agents directory not found"
-          echo "=== Checking for requirements ==="
-          ls -la *.txt *.json *.env 2>/dev/null || echo "No config files found"
-
-      # خطوة 4: تثبيت المكتبات
+      # خطوة 3: تثبيت المكتبات المطلوبة
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            echo "Installing from requirements.txt..."
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found, installing common dependencies..."
-            pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
-          fi
-          echo "=== Installed packages ==="
+          pip install -r requirements.txt
+
+      # خطوة 4: تشغيل السكريبت الأساسي مع debug
+      - name: Run automation
+        env:
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          echo "Starting agents.supervisor..."
+          python -m agents.supervisor || { echo "Script failed, dumping log if exists:"; cat agents/supervisor.log || echo "No log found."; exit 1; }
+
+      # خطوة 5: Optional debug for environment & secrets
+      - name: Debug info
+        run: |
+          echo "Python version:"
+          python --version
+          echo "Installed packages:"
           pip list
-
-      # خطوة 5: اختبار استيراد المكتبات الأساسية
-      - name: Test imports
-        run: |
-          echo "Testing Python imports..."
-          python -c "
-          try:
-              import google.auth
-              import google.oauth2.credentials
-              import google_auth_oauthlib.flow
-              print('✅ Google auth imports successful')
-          except Exception as e:
-              print(f'❌ Google auth import error: {e}')
-          "
-
-      # خطوة 6: تحقق من وجود ملفات أساسية
-      - name: Validate required files
-        run: |
-          echo "=== Validating required files ==="
-          if [ -f "agents/supervisor.py" ]; then
-            echo "✅ agents/supervisor.py exists"
-            echo "=== First few lines of supervisor.py ==="
-            head -30 agents/supervisor.py
-          else
-            echo "❌ agents/supervisor.py NOT FOUND"
+          echo "Secrets check:"
+          if [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+            echo "GOOGLE_CLIENT_SECRET is empty!"
             exit 1
-          fi
-
-          # تحقق من وجود ملفات video أو input إن كان السكريبت يحتاجها
-          if [ -d "videos" ]; then
-            echo "✅ videos directory exists"
-            ls videos/ | head -5
-          fi
-
-      # خطوة 7: فحص الـ secret
-      - name: Debug secret (safe check)
-        run: |
-          echo "=== Checking GOOGLE_CLIENT_SECRET ==="
-          if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
-            echo "✅ Secret is set (length: ${#GOOGLE_CLIENT_SECRET} chars)"
-            # فحص بسيط إذا كان JSON صالح
-            echo "$GOOGLE_CLIENT_SECRET" | python -c "
-import sys, json
-try:
-    data = sys.stdin.read()
-    if data.strip():
-        parsed = json.loads(data)
-        print(f'✅ Valid JSON with keys: {list(parsed.keys())}')
-    else:
-        print('⚠️ Secret is empty string')
-except Exception as e:
-    print(f'❌ Invalid JSON in secret: {e}')
-"
           else
-            echo "❌ GOOGLE_CLIENT_SECRET is empty or not set"
-            exit 1
+            echo "GOOGLE_CLIENT_SECRET loaded successfully"
           fi
-        env:
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-      # خطوة 8: إنشاء ملف client_secret.json مؤقت (إذا كان السكريبت يطلبه)
-      - name: Create temporary client_secret.json
-        run: |
-          echo "Creating client_secret.json from secret..."
-          echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
-          echo "=== client_secret.json created (first 200 chars) ==="
-          head -c 200 client_secret.json
-          echo ""
-          echo "=== File size ==="
-          ls -la client_secret.json
-        env:
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-      # خطوة 9: تشغيل السكريبت مع كامل تفاصيل Debug
-      - name: Run automation with full debug
-        env:
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          PYTHONPATH: ${{ github.workspace }}
-          PYTHONUNBUFFERED: 1  # لإظهار الـ output مباشرة
-        run: |
-          echo "=== Starting supervisor with full debug ==="
-          set -x  # لطباعة كل أمر قبل تنفيذه
-          
-          # جرب تشغيل السكريبت مع python -m
-          python -m agents.supervisor 2>&1 | tee supervisor_output.log
-          
-          EXIT_CODE=$?
-          echo "=== Script exited with code: $EXIT_CODE ==="
-          
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "❌ Script failed. Debug info:"
-            echo "=== Full output ==="
-            cat supervisor_output.log
-            
-            echo "=== Python traceback (if any) ==="
-            grep -A 20 -B 5 "Traceback\|Error\|Exception" supervisor_output.log || echo "No traceback found"
-            
-            # إذا كان هناك ملف log من السكريبت نفسه
-            if [ -f "supervisor.log" ]; then
-              echo "=== supervisor.log content ==="
-              tail -50 supervisor.log
-            fi
-            
-            exit $EXIT_CODE
-          else
-            echo "✅ Script completed successfully"
-            echo "=== Last 20 lines of output ==="
-            tail -20 supervisor_output.log
-          fi
-
-      # خطوة 10: تنظيف الملفات المؤقتة
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "=== Cleanup ==="
-          rm -f client_secret.json supervisor_output.log 2>/dev/null || true
