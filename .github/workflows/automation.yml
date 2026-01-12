@@ -21,30 +21,85 @@ jobs:
         with:
           python-version: '3.10'
 
-      # خطوة 3: عرض الملفات للتأكد
-      - name: Show files
+      # خطوة 3: عرض هيكل المشروع
+      - name: Show project structure
         run: |
-          echo "=== Current directory ==="
-          pwd
-          echo "=== Files in agents/ ==="
-          ls -la agents/
+          echo "=== Project structure ==="
+          find . -type f -name "*.py" | head -30
+          echo "=== All directories ==="
+          ls -la
 
-      # خطوة 4: تثبيت المتطلبات (إن وجدت)
+      # خطوة 4: تثبيت المتطلبات
       - name: Install requirements
         run: |
           python -m pip install --upgrade pip
           if [ -f "requirements.txt" ]; then
             pip install -r requirements.txt
           fi
+          # تثبيت حزم إضافية قد يحتاجها quality gate
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
-      # خطوة 5: تشغيل supervisor مع حل مشكلة PYTHONPATH
-      - name: Run Supervisor
+      # خطوة 5: تحقق من ملفات الجودة
+      - name: Debug quality gate
+        run: |
+          echo "=== Content of agents/quality_gate.py ==="
+          if [ -f "agents/quality_gate.py" ]; then
+            cat agents/quality_gate.py
+            echo ""
+            echo "=== Looking for 'Script too weak' in quality_gate.py ==="
+            grep -n "Script too weak\|Quality Gate failed" agents/quality_gate.py || echo "Not found in quality_gate.py"
+          else
+            echo "❌ quality_gate.py not found"
+          fi
+
+      # خطوة 6: تحقق من supervisor
+      - name: Debug supervisor
+        run: |
+          echo "=== Content of agents/supervisor.py (first 100 lines) ==="
+          if [ -f "agents/supervisor.py" ]; then
+            head -100 agents/supervisor.py
+            echo ""
+            echo "=== Looking for quality_check in supervisor ==="
+            grep -n "quality_check\|quality_gate\|Quality Gate" agents/supervisor.py || echo "Not found"
+          else
+            echo "❌ supervisor.py not found"
+          fi
+
+      # خطوة 7: تحقق من الملفات المطلوبة
+      - name: Check required files
+        run: |
+          echo "=== Checking for required files ==="
+          
+          # ملفات قد يحتاجها النظام
+          REQUIRED_FILES="client_secret.json .env config.json"
+          for file in $REQUIRED_FILES; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "⚠️ $file does not exist"
+            fi
+          done
+          
+          # تحقق من وجود أدلة
+          REQUIRED_DIRS="videos inputs assets"
+          for dir in $REQUIRED_DIRS; do
+            if [ -d "$dir" ]; then
+              echo "✅ $dir directory exists"
+              ls "$dir" | head -5
+            else
+              echo "⚠️ $dir directory does not exist"
+            fi
+          done
+
+      # خطوة 8: تشغيل supervisor مع debug موسع
+      - name: Run Supervisor with detailed debug
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          PYTHONPATH: /home/runner/work/auto-youtube-factory/auto-youtube-factory
         run: |
-          echo "=== Starting Supervisor ==="
+          echo "=== Starting Supervisor with full debug ==="
           
-          # إنشاء ملف client_secret.json
+          # 1. إنشاء client_secret.json
           if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
             echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
             echo "✅ Created client_secret.json"
@@ -53,16 +108,53 @@ jobs:
             exit 1
           fi
           
-          # الحل: أضف المسار الحالي إلى PYTHONPATH
-          echo "=== Setting PYTHONPATH ==="
-          export PYTHONPATH=$PWD:$PYTHONPATH
+          # 2. إنشاء .env إذا كان مطلوباً
+          if [ ! -f ".env" ]; then
+            cat > .env << EOF
+            # Environment variables for YouTube Automation
+            GOOGLE_APPLICATION_CREDENTIALS=client_secret.json
+            DEBUG=True
+            QUALITY_THRESHOLD=0.7
+            EOF
+            echo "✅ Created .env file"
+          fi
           
-          # اختبر استيراد agents
-          echo "=== Testing agents import ==="
-          python -c "import sys; print('Python path:', sys.path)"
-          python -c "import agents; print('✅ Successfully imported agents')" || echo "❌ Failed to import agents"
+          # 3. تشغيل supervisor مع python -m مباشرة
+          echo "=== Running python -m agents.supervisor ==="
+          set -x  # لعرض كل أمر أثناء التنفيذ
           
-          # تشغيل السكريبت
-          echo "=== Running supervisor ==="
           cd /home/runner/work/auto-youtube-factory/auto-youtube-factory
-          python -m agents.supervisor
+          
+          # محاولة أولى: تشغيل مباشر
+          python -m agents.supervisor 2>&1 | tee supervisor_output.txt
+          
+          EXIT_CODE=$?
+          echo "=== Exit code: $EXIT_CODE ==="
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Supervisor failed. Debug info:"
+            echo "=== Full output (last 100 lines) ==="
+            tail -100 supervisor_output.txt
+            
+            echo "=== Searching for errors ==="
+            grep -i -B5 -A5 "error\|fail\|weak\|exception\|traceback" supervisor_output.txt || echo "No error patterns found"
+            
+            # جرب تشغيل الوحدات فرادى
+            echo "=== Testing individual imports ==="
+            python -c "
+import traceback
+modules = ['agents.trend_agent', 'agents.profit_agent', 'agents.script_agent', 
+           'agents.halal_guard', 'agents.quality_gate', 'agents.video_agent',
+           'agents.upload_agent', 'agents.analytics_agent', 'agents.memory_agent',
+           'agents.recycle_agent']
+
+for module in modules:
+    try:
+        __import__(module)
+        print(f'✅ {module}')
+    except Exception as e:
+        print(f'❌ {module}: {e}')
+"
+          else
+            echo "✅ Supervisor completed successfully"
+          fi
