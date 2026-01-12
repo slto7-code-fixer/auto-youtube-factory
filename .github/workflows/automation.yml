@@ -15,11 +15,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Setup Python (تحديد نسخة صحيحة)
+    # 2. Setup Python مع نسخة صحيحة
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.10  # <-- هنا تأكد أنه ليس 3.1
+        python-version: 3.10  # <-- لا تضع 3.1، استخدم 3.10 أو 3.11
 
     # 3. تثبيت dependencies
     - name: Install dependencies
@@ -27,9 +27,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # 4. إعداد متغيرات البيئة من GitHub Secrets
-    - name: Set environment variables
-      run: echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> $GITHUB_ENV
+    # 4. إنشاء ملف client_secret.json من الـ Secret
+    - name: Create client_secret.json
+      run: |
+        echo "${{ secrets.GOOGLE_CLIENT_SECRET }}" > agents/client_secret.json
 
     # 5. تشغيل السكريبت الرئيسي
     - name: Run automation
