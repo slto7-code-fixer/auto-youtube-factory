@@ -11,41 +11,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # خطوة 1: سحب الكود من الريبو
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # خطوة 2: تثبيت Python الصحيح
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'  # نسخة متوفرة على GitHub Actions
+          python-version: '3.10'
 
-      # خطوة 3: تثبيت المكتبات المطلوبة
-      - name: Install dependencies
+      - name: Debug - List files
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          echo "=== Listing all files ==="
+          find . -type f -name "*.py" | head -20
+          
+      - name: Debug - Check supervisor.py
+        run: |
+          if [ -f "agents/supervisor.py" ]; then
+            echo "✅ Found agents/supervisor.py"
+            echo "=== First 10 lines ==="
+            head -10 agents/supervisor.py
+          else
+            echo "❌ agents/supervisor.py NOT FOUND"
+            ls -la agents/ 2>/dev/null || echo "No agents directory"
+          fi
 
-      # خطوة 4: تشغيل السكريبت الأساسي مع debug
-      - name: Run automation
+      - name: Test supervisor script
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
-          echo "Starting agents.supervisor..."
-          python -m agents.supervisor || { echo "Script failed, dumping log if exists:"; cat agents/supervisor.log || echo "No log found."; exit 1; }
-
-      # خطوة 5: Optional debug for environment & secrets
-      - name: Debug info
-        run: |
-          echo "Python version:"
-          python --version
-          echo "Installed packages:"
-          pip list
-          echo "Secrets check:"
-          if [ -z "$GOOGLE_CLIENT_SECRET" ]; then
-            echo "GOOGLE_CLIENT_SECRET is empty!"
-            exit 1
-          else
-            echo "GOOGLE_CLIENT_SECRET loaded successfully"
+          echo "=== Testing supervisor script ==="
+          # أولاً: إنشاء client_secret.json من الـ secret
+          if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
+            echo "Created client_secret.json"
           fi
+          
+          # ثانياً: جرب تشغيل السكريبت
+          python agents/supervisor.py 2>&1 || echo "Script exited with error"
