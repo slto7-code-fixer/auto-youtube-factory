@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout الكود
+    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Setup Python (اصلاح النسخة هنا)
+    # 2. Setup Python (تحديد نسخة صحيحة)
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.10
+        python-version: 3.10  # <-- هنا تأكد أنه ليس 3.1
 
     # 3. تثبيت dependencies
     - name: Install dependencies
