@@ -3,7 +3,7 @@ name: Auto YouTube Factory
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"  # كل 6 ساعات
+    - cron: "0 */6 * * *"
 
 jobs:
   run:
@@ -22,6 +22,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Create OAuth client_secret.json
+        run: |
+          echo '${{ secrets.GOOGLE_CLIENT_SECRET }}' > client_secret.json
 
       - name: Run automation
         run: |
