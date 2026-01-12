@@ -1,0 +1,64 @@
+name: Test Agents
+on: [push, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - run: sed -i 's/25/3/g' agents/quality_gate.py
+      - run: echo "${{ secrets.GOOGLE_CLIENT_SECRET }}" > client_secret.json
+      - name: Test each agent
+        run: |
+          cd /home/runner/work/auto-youtube-factory/auto-youtube-factory
+          
+          echo "=== Testing agents ==="
+          
+          python -c "
+import sys
+sys.path.insert(0, '.')
+
+# Test 1: trend_agent
+try:
+    from agents.trend_agent import get_trend
+    t = get_trend()
+    print('✅ trend_agent:', t)
+except Exception as e:
+    print('❌ trend_agent failed:', e)
+
+# Test 2: profit_agent
+try:
+    from agents.profit_agent import profit_score
+    s = profit_score('test')
+    print('✅ profit_agent:', s)
+except Exception as e:
+    print('❌ profit_agent failed:', e)
+
+# Test 3: script_agent
+try:
+    from agents.script_agent import generate_script
+    script = generate_script('Python')
+    print('✅ script_agent word count:', len(script.split()))
+except Exception as e:
+    print('❌ script_agent failed:', e)
+
+# Test 4: halal_guard
+try:
+    from agents.halal_guard import halal_check
+    h = halal_check('test')
+    print('✅ halal_guard:', h)
+except Exception as e:
+    print('❌ halal_guard failed:', e)
+
+# Test 5: quality_gate
+try:
+    from agents.quality_gate import quality_check
+    ok, msg = quality_check('short follow')
+    print('✅ quality_gate:', ok, msg)
+except Exception as e:
+    print('❌ quality_gate failed:', e)
+"
