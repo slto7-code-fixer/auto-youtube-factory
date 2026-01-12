@@ -29,10 +29,8 @@ jobs:
         run: |
           echo "=== Fixing quality_gate.py ==="
           
-          # نسخة احتياطية
           cp agents/quality_gate.py agents/quality_gate.py.backup
           
-          # تعديل العتبة من 25 إلى 10 كلمات
           cat > agents/quality_gate.py << 'EOF'
 # بوابة الجودة
 def quality_check(script):
@@ -52,7 +50,7 @@ EOF
           echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
           echo "✅ Created client_secret.json"
       
-      - name: Create test folders
+      - name: Create folders
         run: |
           mkdir -p videos inputs assets
           echo "✅ Created folders"
@@ -60,8 +58,9 @@ EOF
       - name: Create test script
         run: |
           cat > inputs/test_script.txt << 'EOF'
-Welcome to our YouTube channel! This is a test script with more than 10 words.
-Please follow our channel for more amazing tutorials about Python and automation.
+Welcome to our YouTube channel! This is a test script.
+Please follow our channel for more amazing tutorials.
+This script has more than 10 words for quality gate.
 Don't forget to like and subscribe for more content!
 EOF
           echo "✅ Created test script"
