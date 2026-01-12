@@ -19,7 +19,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10  # ⚡ الإصلاح: استخدم نسخة Python صحيحة ومستقرة
+          python-version: '3.10'  # ✅ إصلاح: استخدام نسخة متوفرة
 
       # خطوة 3: تثبيت المكتبات المطلوبة
       - name: Install dependencies
@@ -30,6 +30,6 @@ jobs:
       # خطوة 4: تشغيل السكريبت الأساسي
       - name: Run automation
         env:
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}  # ⚡ استخدام secret بدل الملف
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           python -m agents.supervisor
