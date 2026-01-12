@@ -19,32 +19,52 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Debug - List files
+      - name: Install dependencies
         run: |
-          echo "=== Listing all files ==="
-          find . -type f -name "*.py" | head -20
-          
-      - name: Debug - Check supervisor.py
-        run: |
-          if [ -f "agents/supervisor.py" ]; then
-            echo "✅ Found agents/supervisor.py"
-            echo "=== First 10 lines ==="
-            head -10 agents/supervisor.py
-          else
-            echo "❌ agents/supervisor.py NOT FOUND"
-            ls -la agents/ 2>/dev/null || echo "No agents directory"
+          python -m pip install --upgrade pip
+          # تثبيت الحزمة الحالية أولاً
+          pip install -e . || echo "Could not install as package, continuing..."
+          # ثم تثبيت المتطلبات الأخرى
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
           fi
 
-      - name: Test supervisor script
+      - name: Debug - Show Python path
+        run: |
+          echo "=== Python Path ==="
+          python -c "import sys; print('\n'.join(sys.path))"
+          
+      - name: Run supervisor script
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          PYTHONPATH: /home/runner/work/auto-youtube-factory/auto-youtube-factory
         run: |
-          echo "=== Testing supervisor script ==="
-          # أولاً: إنشاء client_secret.json من الـ secret
+          echo "=== Running supervisor script ==="
+          
+          # 1. إنشاء client_secret.json
           if [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            echo "Creating client_secret.json..."
             echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
-            echo "Created client_secret.json"
+          else
+            echo "ERROR: GOOGLE_CLIENT_SECRET is not set!"
+            exit 1
           fi
           
-          # ثانياً: جرب تشغيل السكريبت
-          python agents/supervisor.py 2>&1 || echo "Script exited with error"
+          # 2. تشغيل السكريبت مع debug
+          echo "Starting supervisor..."
+          set -x  # لعرض الأوامر أثناء التنفيذ
+          
+          # الطريقة المضمونة: استخدام python -m من الدليل الجذر
+          cd /home/runner/work/auto-youtube-factory/auto-youtube-factory
+          python -c "
+import sys
+print('Python version:', sys.version)
+print('Current dir:', sys.path[0])
+print('Has agents?', 'agents' in sys.modules)
+"
+          
+          python -m agents.supervisor
+          
+          EXIT_CODE=$?
+          echo "Supervisor exited with code: $EXIT_CODE"
+          exit $EXIT_CODE
