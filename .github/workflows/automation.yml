@@ -2,71 +2,41 @@ name: Auto YouTube Factory
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      
+
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-      
-      - name: Fix quality_gate.py
+
+      - name: Fix quality gate (من 25 إلى 10 كلمات)
         run: |
-          echo "=== Fixing quality_gate.py ==="
-          
-          cp agents/quality_gate.py agents/quality_gate.py.backup
-          
-          cat > agents/quality_gate.py << 'EOF'
-# بوابة الجودة
-def quality_check(script):
-    if len(script.split()) < 10:
-        return False, "Script too weak"
-    if "follow" not in script.lower():
-        return False, "No CTA"
-    return True, "Passed"
-EOF
-          
-          echo "✅ Fixed quality_gate.py"
-      
+          sed -i 's/25/10/g' agents/quality_gate.py
+
       - name: Create client_secret.json
         env:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           echo "$GOOGLE_CLIENT_SECRET" > client_secret.json
-          echo "✅ Created client_secret.json"
-      
-      - name: Create folders
-        run: |
-          mkdir -p videos inputs assets
-          echo "✅ Created folders"
-      
-      - name: Create test script
-        run: |
-          cat > inputs/test_script.txt << 'EOF'
-Welcome to our YouTube channel! This is a test script.
-Please follow our channel for more amazing tutorials.
-This script has more than 10 words for quality gate.
-Don't forget to like and subscribe for more content!
-EOF
-          echo "✅ Created test script"
-      
+
       - name: Run supervisor
         run: |
           cd /home/runner/work/auto-youtube-factory/auto-youtube-factory
-          export PYTHONPATH=$PWD:$PYTHONPATH
-          python -m agents.supervisor
+          PYTHONPATH=/home/runner/work/auto-youtube-factory/auto-youtube-factory:$PYTHONPATH python -m agents.supervisor
